@@ -114,11 +114,17 @@ def test_attested_action_is_explicitly_not_verified(tmp_path):
     action = svc.propose_next_action(project.id, "Review", source_capsule_ids=[cap.id])
     svc.decide_next_action(action["id"], True)
     svc.attest_next_action_done(action["id"], [cap.id], "Operator says done")
-    row = project_card(svc, project)
+    # Recent context can carry an attestation label; old context must still
+    # trigger a staleness review, even when the operator previously said done.
+    recent = svc.circle_back_review_board(as_of=NOW, stale_days=3650)
+    row = next(c for c in recent["cards"] if c["project_id"] == project.id)
     assert row["review_signal"] == "operator_attested_not_verified"
     assert row["operator_actions"][0]["status"] == "operator_attested"
     assert row["operator_actions"][0]["independent_verification"] is False
-    assert "Operator says done" not in str(board(svc))
+    assert "Operator says done" not in str(recent)
+    stale_row = project_card(svc, project)
+    assert stale_row["review_signal"] == "stale_context_review"
+    assert stale_row["completion_status"] == "not_independently_verified"
 
 
 def test_rejected_action_does_not_trigger_drift_review(tmp_path):
