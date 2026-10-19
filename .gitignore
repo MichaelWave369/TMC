@@ -51,3 +51,6 @@ Thumbs.db
 
 # Private Circle-Back HTML exports
 *.circle-back.html
+
+# Private Circle-Back snapshot and delta files
+*.circle-back.json

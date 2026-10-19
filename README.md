@@ -42,6 +42,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R4:** Generate a [static, offline visual review board](docs/CIRCLE_BACK_OFFLINE_HTML.md), with no server, scripts, or external assets. Run `python -m app.tools.circle_back_html --db data/tmc.db` to create a private local HTML file. Do not publish generated reports.
 
+**Circle-Back R5:** Save and compare two [private local review snapshots](docs/CIRCLE_BACK_SNAPSHOT_DELTA.md) with `python -m app.tools.circle_back_delta snapshot` and `python -m app.tools.circle_back_delta compare --before OLD.json --after NEW.json`. Changed records are review clues, never independent verification.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.
