@@ -38,6 +38,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R1:** Opt-in, local operator decisions can also be recorded as proposed, approved, rejected, or operator-attested (not independently verified). See [the operator decision guide](docs/CIRCLE_BACK_OPERATOR_ACTIONS.md) for the local-only CLI and evidence requirements. R2 adds a read-only [Evidence Drift Gate](docs/CIRCLE_BACK_EVIDENCE_DRIFT.md) so previously linked evidence changes cannot quietly masquerade as unchanged.
 
+**Circle-Back R3:** The [local review board](docs/CIRCLE_BACK_REVIEW_BOARD.md) ranks project suggestions together with operator action statuses and evidence-change warnings. Run `python -m app.tools.circle_back_actions --db data/tmc.db review`. It never independently verifies completion or triggers actions.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.

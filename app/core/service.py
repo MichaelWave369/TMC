@@ -694,6 +694,16 @@ class MemoryService:
         self.store.save_next_action_transition(action, event, expected_status=None)
         return self._next_action_public_record(action)
 
+    def _next_action_require_source_consistency(self, action: NextAction) -> None:
+        """Require still-visible source records with proposal-time snapshots."""
+        self._next_action_visible_refs(action.workspace_id, action.source_capsule_ids)
+        if not action.source_capsule_ids:
+            return
+        if not action.source_snapshots:
+            raise ValueError("Source snapshot unavailable; create a fresh proposal")
+        if self._next_action_snapshots(action.source_capsule_ids) != action.source_snapshots:
+            raise ValueError("Source evidence changed; review and create a new proposal")
+
     def decide_next_action(self, action_id: str, approve: bool, note: str = "") -> dict:
         """Explicit local operator decision; no automatic job starts."""
         if type(approve) is not bool:
@@ -703,12 +713,7 @@ class MemoryService:
             raise ValueError("Only proposed actions can be decided")
         note = self._next_action_text(note, "Note", 500, required=False)
         if approve:
-            self._next_action_visible_refs(action.workspace_id, action.source_capsule_ids)
-            if action.source_capsule_ids:
-                if not action.source_snapshots:
-                    raise ValueError("Source snapshot unavailable; create a fresh proposal")
-                if self._next_action_snapshots(action.source_capsule_ids) != action.source_snapshots:
-                    raise ValueError("Source evidence changed; review and create a new proposal")
+            self._next_action_require_source_consistency(action)
         action.status = NextActionStatus.approved if approve else NextActionStatus.rejected
         action.updated_at = datetime.now(timezone.utc)
         event = NextActionEvent(
@@ -728,6 +733,9 @@ class MemoryService:
         action = self._next_action_owned(action_id)
         if action.status != NextActionStatus.approved:
             raise ValueError("Only approved actions can receive completion attestations")
+        # An approval cannot silently become a completion claim after the
+        # evidence used for the original decision changes or disappears.
+        self._next_action_require_source_consistency(action)
         note = self._next_action_text(note, "Attestation note", 500, required=True)
         if not evidence_capsule_ids:
             raise ValueError("At least one visible supporting capsule is required")
@@ -788,6 +796,45 @@ class MemoryService:
             row["evidence_claim"] = "operator_recorded_not_independently_verified"
             results.append(row)
         return results
+
+    def circle_back_review_board(
+        self, limit: int = 20, stale_days: int = 30, as_of=None,
+    ) -> dict:
+        """Read-only local project and operator-action reconciliation.
+
+        Does not read action titles, notes, hidden evidence, or raw capsules
+        into the output. There are no automatic jobs or remote endpoints.
+        """
+        from app.memory.review_board import build_review_board
+
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("limit must be an integer between 1 and 100")
+        # The v0 project preview is deliberately bounded at 100. Mark any
+        # incomplete coverage instead of implying all projects were assessed.
+        preview = self.circle_back_queue(limit=100, stale_days=stale_days, as_of=as_of)
+        visible_projects = {
+            (c["project_id"], c["workspace_id"])
+            for c in preview["cards"]
+        }
+        action_rows = {}
+        # Scope actions to an existing, visible project in the active profile.
+        for action in self.store.get_next_actions():
+            key = (action.project_id, action.workspace_id)
+            if action.profile_id != self.active_profile_id or key not in visible_projects:
+                continue
+            report = self.assess_next_action_evidence(action.id)
+            action_rows.setdefault(key, []).append({
+                "action_id": action.id,
+                "status": action.status.value,
+                "evidence_review": report["evidence_review"],
+                "source_snapshot_status": report["source_snapshot_status"],
+                "completion_snapshot_status": report["completion_snapshot_status"],
+                "updated_at": action.updated_at.isoformat(),
+                "independent_verification": False,
+            })
+        return build_review_board(
+            preview=preview, actions_by_project=action_rows, limit=limit,
+        )
 
     # convenience getters
     def list_identity(self):
