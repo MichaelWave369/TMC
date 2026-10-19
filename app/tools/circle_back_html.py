@@ -39,6 +39,12 @@ def save_new_local_report(document: str, output: Path | None = None) -> Path:
         target = output.expanduser().absolute()
         if target.suffix.lower() != ".html":
             raise ValueError("An explicit output filename must end in .html")
+        # A local HTML report can contain project names/IDs. Refuse to place
+        # it anywhere inside the checked-out source tree, even through a
+        # symlinked parent directory, to prevent accidental git publication.
+        repository_root = Path(__file__).resolve().parents[2]
+        if target.resolve().is_relative_to(repository_root):
+            raise ValueError("HTML reports must be saved outside the repository")
     # O_EXCL + O_CREAT refuses existing files and symlink destinations.
     descriptor = os.open(str(target), os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
