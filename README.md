@@ -1,0 +1,37 @@
+# Total Memory Core (TMC)
+
+**An independent, local-first memory platform for AI systems.**
+
+[MIT License](LICENSE) · Python 3.10+ · Operator-controlled storage
+
+TMC explores structured memory capsules, identity and project context, policy-aware retrieval, local attachments, audits, snapshots, integration interfaces, and explainable memory operations. The source is open for inspection, learning, reuse, and contributions under MIT.
+
+## Security notice
+
+**Source availability does not mean remote-deployment readiness.** The current HTTP API has no outer authentication/authorization middleware and its legacy XOR-based vault transformation is **not secure encryption**. TMC must be evaluated on a trusted machine, bound to `127.0.0.1` only, with **non-sensitive demo data**. Do not publish it as a network service, store secrets in its vaults, or commit private runtime files.
+
+## Development quick start
+
+```bash
+python -m venv .venv
+python -m pip install -e ".[dev]"
+python -m pytest -q
+python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+```
+
+Open `http://127.0.0.1:8000/ui` for the local operator interface, or `/docs` for the API documentation.
+
+## Features
+
+- Capsule-based memory and local ingestion
+- Profile-scoped identity and workspace organization
+- Retrieval ranking, provenance fields, and policy decisions
+- Local SQLite-backed storage with operator audits
+- Import/export, snapshots, plugins, connectors, and rule foundations
+- Diagnostic, migration, and release-readiness utilities
+
+## Project status
+
+This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.
+
+Copyright © 2026 Michael Hughes. Released under the [MIT License](LICENSE).
