@@ -36,7 +36,7 @@ TMC can now generate a **local, read-only project re-entry queue** from linked m
 
 See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m app.tools.circle_back_preview --db data/tmc.db` after local setup.
 
-**Circle-Back R1:** Opt-in, local operator decisions can also be recorded as proposed, approved, rejected, or operator-attested (not independently verified). See [the operator decision guide](docs/CIRCLE_BACK_OPERATOR_ACTIONS.md) for the local-only CLI and evidence requirements.
+**Circle-Back R1:** Opt-in, local operator decisions can also be recorded as proposed, approved, rejected, or operator-attested (not independently verified). See [the operator decision guide](docs/CIRCLE_BACK_OPERATOR_ACTIONS.md) for the local-only CLI and evidence requirements. R2 adds a read-only [Evidence Drift Gate](docs/CIRCLE_BACK_EVIDENCE_DRIFT.md) so previously linked evidence changes cannot quietly masquerade as unchanged.
 
 ## Project status
 
