@@ -21,6 +21,9 @@ from app.memory.models import (
     ConflictRecord,
     DeviceIdentity,
     IngestRequest,
+    NextAction,
+    NextActionEvent,
+    NextActionStatus,
     PolicyMode,
     Profile,
     ProjectRecord,
@@ -561,6 +564,176 @@ class MemoryService:
             limit=limit,
             stale_days=stale_days,
         )
+
+    # Circle-Back R1: local operator decisions, with no HTTP exposure.
+    def _next_action_project(self, project_id: str) -> ProjectRecord:
+        project = next((
+            p for p in self.store.get_projects()
+            if p.id == project_id and p.profile_id == self.active_profile_id
+        ), None)
+        if project is None:
+            raise ValueError("Project is not available in the active profile")
+        return project
+
+    def _next_action_visible_refs(
+        self, workspace_id: str, capsule_ids: list[str],
+    ) -> list[str]:
+        if not isinstance(capsule_ids, list) or len(capsule_ids) > 20:
+            raise ValueError("Evidence must be a list of at most 20 capsule IDs")
+        if len(set(capsule_ids)) != len(capsule_ids):
+            raise ValueError("Duplicate capsule evidence IDs")
+        for capsule_id in capsule_ids:
+            if not isinstance(capsule_id, str) or not capsule_id.strip():
+                raise ValueError("Invalid capsule evidence ID")
+            capsule = self.store.get_capsule(capsule_id)
+            if (capsule is None
+                    or capsule.profile_id != self.active_profile_id
+                    or workspace_id not in capsule.workspace_ids
+                    or capsule.policy != PolicyMode.persistent
+                    or capsule.status in {CapsuleStatus.archived, CapsuleStatus.superseded}):
+                raise ValueError("Capsule evidence is not policy-visible for this project")
+            vault = self.store.get_vault(capsule.vault_id)
+            if vault is None or vault.status != VaultStatus.unlocked:
+                raise ValueError("Capsule evidence is in an unavailable vault")
+            allowed, _ = self.policy.allow_retrieval(
+                capsule, {"profile_id": self.active_profile_id, "allow_private": False}
+            )
+            if not allowed:
+                raise ValueError("Capsule evidence is blocked by policy")
+        return capsule_ids
+
+    def _next_action_owned(self, action_id: str) -> NextAction:
+        action = self.store.get_next_action(action_id)
+        if action is None or action.profile_id != self.active_profile_id:
+            raise ValueError("Action not available in the active profile")
+        project = self._next_action_project(action.project_id)
+        if action.workspace_id != project.workspace_id:
+            raise ValueError("Action project scope mismatch")
+        return action
+
+    @staticmethod
+    def _next_action_text(value: str, label: str, length: int, *, required: bool):
+        if not isinstance(value, str) or len(value.strip()) > length:
+            raise ValueError(f"{label} must contain at most {length} characters")
+        if required and not value.strip():
+            raise ValueError(f"{label} is required")
+        return value.strip()
+
+    def propose_next_action(
+        self, project_id: str, title: str, rationale: str = "",
+        source_capsule_ids: list[str] | None = None,
+    ) -> dict:
+        """Record an operator-requested proposal, not an approved task."""
+        project = self._next_action_project(project_id)
+        title = self._next_action_text(title, "Title", 200, required=True)
+        rationale = self._next_action_text(rationale, "Rationale", 1000, required=False)
+        refs = self._next_action_visible_refs(
+            project.workspace_id, source_capsule_ids if source_capsule_ids is not None else []
+        )
+        action = NextAction(
+            profile_id=self.active_profile_id, project_id=project.id,
+            workspace_id=project.workspace_id, title=title, rationale=rationale,
+            source_capsule_ids=list(refs),
+        )
+        event = NextActionEvent(
+            action_id=action.id, profile_id=self.active_profile_id,
+            transition="proposed", evidence_capsule_ids=list(refs),
+        )
+        self.store.save_next_action_transition(action, event, expected_status=None)
+        return action.model_dump(mode="json")
+
+    def decide_next_action(self, action_id: str, approve: bool, note: str = "") -> dict:
+        """Explicit local operator decision; no automatic job starts."""
+        if type(approve) is not bool:
+            raise ValueError("Approval must be an explicit boolean")
+        action = self._next_action_owned(action_id)
+        if action.status != NextActionStatus.proposed:
+            raise ValueError("Only proposed actions can be decided")
+        note = self._next_action_text(note, "Note", 500, required=False)
+        if approve:
+            self._next_action_visible_refs(action.workspace_id, action.source_capsule_ids)
+        action.status = NextActionStatus.approved if approve else NextActionStatus.rejected
+        action.updated_at = __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        )
+        event = NextActionEvent(
+            action_id=action.id, profile_id=self.active_profile_id,
+            transition="approved" if approve else "rejected", operator_note=note,
+            evidence_capsule_ids=list(action.source_capsule_ids) if approve else [],
+        )
+        self.store.save_next_action_transition(
+            action, event, expected_status=NextActionStatus.proposed.value
+        )
+        return action.model_dump(mode="json")
+
+    def attest_next_action_done(
+        self, action_id: str, evidence_capsule_ids: list[str], note: str,
+    ) -> dict:
+        """Store the operator's claim of done, not independent verification."""
+        action = self._next_action_owned(action_id)
+        if action.status != NextActionStatus.approved:
+            raise ValueError("Only approved actions can receive completion attestations")
+        note = self._next_action_text(note, "Attestation note", 500, required=True)
+        if not evidence_capsule_ids:
+            raise ValueError("At least one visible supporting capsule is required")
+        refs = self._next_action_visible_refs(action.workspace_id, evidence_capsule_ids)
+        action.status = NextActionStatus.operator_attested
+        action.completion_evidence_ids = list(refs)
+        action.updated_at = __import__("datetime").datetime.now(
+            __import__("datetime").timezone.utc
+        )
+        event = NextActionEvent(
+            action_id=action.id, profile_id=self.active_profile_id,
+            transition="operator_attested", operator_note=note,
+            evidence_capsule_ids=list(refs),
+        )
+        self.store.save_next_action_transition(
+            action, event, expected_status=NextActionStatus.approved.value
+        )
+        return action.model_dump(mode="json")
+
+    def list_next_actions(self) -> list[dict]:
+        """Only the active profile; references hidden by policy are omitted."""
+        result = []
+        for action in self.store.get_next_actions():
+            if action.profile_id != self.active_profile_id:
+                continue
+            project = next((
+                p for p in self.store.get_projects()
+                if p.id == action.project_id and p.profile_id == self.active_profile_id
+                and p.workspace_id == action.workspace_id
+            ), None)
+            if project is None:
+                continue
+            row = action.model_dump(mode="json")
+            for key in ("source_capsule_ids", "completion_evidence_ids"):
+                row[key] = [
+                    cid for cid in row[key]
+                    if self._next_action_refs_currently_visible(action.workspace_id, cid)
+                ]
+            row["evidence_claim"] = "operator_recorded_not_independently_verified"
+            result.append(row)
+        return sorted(result, key=lambda x: (x["created_at"], x["id"]))
+
+    def _next_action_refs_currently_visible(self, workspace_id: str, capsule_id: str) -> bool:
+        try:
+            self._next_action_visible_refs(workspace_id, [capsule_id])
+            return True
+        except ValueError:
+            return False
+
+    def next_action_history(self, action_id: str) -> list[dict]:
+        action = self._next_action_owned(action_id)
+        results = []
+        for event in self.store.get_next_action_events(action.id):
+            row = event.model_dump(mode="json")
+            row["evidence_capsule_ids"] = [
+                cid for cid in row["evidence_capsule_ids"]
+                if self._next_action_refs_currently_visible(action.workspace_id, cid)
+            ]
+            row["evidence_claim"] = "operator_recorded_not_independently_verified"
+            results.append(row)
+        return results
 
     # convenience getters
     def list_identity(self):
