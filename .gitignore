@@ -48,3 +48,6 @@ service-account.json
 Thumbs.db
 .vscode/
 .idea/
+
+# Private Circle-Back HTML exports
+*.circle-back.html
