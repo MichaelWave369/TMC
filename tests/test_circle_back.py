@@ -128,7 +128,9 @@ def test_stale_vs_recent_and_priority_are_deterministic(tmp_path):
     by_id = {c["project_id"]: c for c in queue["cards"]}
     assert by_id[p1.id]["signal"] == "stale_context"
     assert by_id[p2.id]["signal"] == "needs_visible_evidence"
-    assert queue["cards"][0]["project_id"] == p2.id
+    # The synthetic seed may contain additional projects; compare these two.
+    ordered_ids = [c["project_id"] for c in queue["cards"]]
+    assert ordered_ids.index(p2.id) < ordered_ids.index(p1.id)
 
 
 @pytest.mark.parametrize("limit,days", [(0, 30), (101, 30), (5, 0), (True, 30)])
