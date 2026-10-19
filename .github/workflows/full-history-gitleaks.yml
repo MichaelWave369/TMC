@@ -1,0 +1,54 @@
+name: Full-history secret scan
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gitleaks-entire-history:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GITLEAKS_VERSION: "8.30.1"
+    steps:
+      - name: Check out entire repository history and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Ensure refs and full history are available
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse --is-shallow-repository)" = "false"
+          git fetch --force origin '+refs/heads/*:refs/remotes/origin/*' --tags
+          echo "Reachable commit count: $(git rev-list --all --count)"
+          echo "Ref count: $(git for-each-ref --format='%(refname)' | wc -l)"
+      - name: Install pinned Gitleaks with checksum verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_dir="$RUNNER_TEMP/tmc-gitleaks"
+          mkdir -p "$install_dir"
+          cd "$install_dir"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          checksums="gitleaks_${GITLEAKS_VERSION}_checksums.txt"
+          base_url="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}"
+          curl --fail --silent --show-error --location --retry 3 --output "$archive" "$base_url/$archive"
+          curl --fail --silent --show-error --location --retry 3 --output "$checksums" "$base_url/$checksums"
+          sha256sum --check --ignore-missing --status "$checksums"
+          tar -xzf "$archive" gitleaks
+          echo "$install_dir" >> "$GITHUB_PATH"
+      - name: Scan all reachable commits with redaction
+        shell: bash
+        run: |
+          set -euo pipefail
+          gitleaks git --no-banner --redact=100 --log-opts="--all --full-history" .
+          echo "PASS: Gitleaks found no secrets matching its enabled rules in reachable Git history."
+      # No reports or archives are uploaded to publicly accessible artifacts.
+      # Any failure requires local/manual review before GitHub visibility changes.

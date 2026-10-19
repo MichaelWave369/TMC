@@ -1,0 +1,1 @@
+<!doctype html><html><body><h1>Profiles & Workspaces</h1><ul>{% for p in profiles %}<li>{{p.display_name}} ({{p.profile_id}})</li>{% endfor %}</ul><h2>Projects</h2><ul>{% for p in projects %}<li>{{p.name}} - {{p.workspace_id}}</li>{% endfor %}</ul><a href="/ui/">back</a></body></html>
