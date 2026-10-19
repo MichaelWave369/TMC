@@ -40,6 +40,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R3:** The [local review board](docs/CIRCLE_BACK_REVIEW_BOARD.md) ranks project suggestions together with operator action statuses and evidence-change warnings. Run `python -m app.tools.circle_back_actions --db data/tmc.db review`. It never independently verifies completion or triggers actions.
 
+**Circle-Back R4:** Generate a [static, offline visual review board](docs/CIRCLE_BACK_OFFLINE_HTML.md), with no server, scripts, or external assets. Run `python -m app.tools.circle_back_html --db data/tmc.db` to create a private local HTML file. Do not publish generated reports.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.
