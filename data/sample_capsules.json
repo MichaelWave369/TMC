@@ -1,0 +1,114 @@
+{
+  "capsules": [
+    {
+      "id": "cap-1",
+      "source_type": "note",
+      "source_ref": "seed",
+      "text": "User prefers concise briefings.",
+      "summary": "Concise briefings preference",
+      "tags": [
+        "preference"
+      ],
+      "entities": [],
+      "importance": 0.9,
+      "trust": 0.9,
+      "decay_class": "slow",
+      "policy": "persistent",
+      "status": "active",
+      "kind": "identity",
+      "profile_id": "default",
+      "workspace_ids": [
+        "ws-ops"
+      ],
+      "vault_id": "vault-default",
+      "device_id": "device-local",
+      "sync_state": "local",
+      "pinned": true,
+      "retention_weight": 1.6,
+      "related_capsule_ids": [],
+      "provenance": [],
+      "metadata": {
+        "seed": true
+      }
+    },
+    {
+      "id": "cap-2",
+      "source_type": "chat",
+      "source_ref": "seed",
+      "text": "Project Orion direction changed: no offline mode this quarter.",
+      "summary": "Project direction change",
+      "tags": [
+        "project",
+        "release"
+      ],
+      "entities": [
+        "Project Orion"
+      ],
+      "importance": 0.8,
+      "trust": 0.8,
+      "decay_class": "normal",
+      "policy": "persistent",
+      "status": "conflicting",
+      "kind": "project",
+      "profile_id": "default",
+      "workspace_ids": [
+        "ws-ops"
+      ],
+      "vault_id": "vault-default",
+      "device_id": "device-peer-a",
+      "sync_state": "synced",
+      "pinned": false,
+      "retention_weight": 1,
+      "related_capsule_ids": [],
+      "provenance": [
+        "device-peer-a"
+      ],
+      "metadata": {
+        "seed": true
+      }
+    },
+    {
+      "id": "cap-3",
+      "source_type": "example",
+      "source_ref": "seed",
+      "text": "Demo exercise: review a fictional credential-rotation checklist. No real credentials are included.",
+      "summary": "Synthetic checklist example",
+      "tags": [
+        "example",
+        "safety"
+      ],
+      "entities": [],
+      "importance": 0.7,
+      "trust": 0.95,
+      "decay_class": "normal",
+      "policy": "private_local_only",
+      "status": "active",
+      "kind": "standard",
+      "profile_id": "default",
+      "workspace_ids": [],
+      "vault_id": "vault-default",
+      "device_id": "device-local",
+      "sync_state": "local",
+      "pinned": false,
+      "retention_weight": 1,
+      "related_capsule_ids": [],
+      "provenance": [],
+      "metadata": {
+        "seed": true
+      }
+    }
+  ],
+  "projects": [
+    {
+      "id": "proj-1",
+      "profile_id": "default",
+      "workspace_id": "ws-ops",
+      "name": "Project Orion",
+      "description": "v0.5 demo project",
+      "rollup_summary": "direction change conflict case",
+      "created_at": "2026-01-01T00:00:00+00:00",
+      "updated_at": "2026-01-01T00:00:00+00:00"
+    }
+  ],
+  "attachments": []
+}

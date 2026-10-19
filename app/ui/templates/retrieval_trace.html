@@ -1,0 +1,1 @@
+<!doctype html><html><body><h1>Retrieval Trace</h1><p>Query: {{query}}</p><ul>{% for r in trace %}<li>{{r.capsule.summary}} score={{r.final_score}} why={{r.selected_why}} breakdown={{r.breakdown}}</li>{% endfor %}</ul><a href="/ui/">back</a></body></html>

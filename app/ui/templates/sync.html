@@ -1,0 +1,1 @@
+<!doctype html><html><body><h1>Device Trust / Sync Peers</h1><h2>Peers</h2><ul>{% for p in peers %}<li>{{p.device_name}} {{p.trust_status}}</li>{% endfor %}</ul><h2>Sync Review Queue (Conflicts)</h2><ul>{% for c in conflicts %}<li>{{c.conflict_type}} {{c.note}}</li>{% endfor %}</ul><a href="/ui/">back</a></body></html>

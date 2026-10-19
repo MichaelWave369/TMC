@@ -1,0 +1,14 @@
+<!doctype html><html><body>
+<h1>TMC — Total Memory Core v1.0.0</h1>
+<p>Local-first memory · MIT-licensed source · operator-controlled data</p>
+<nav>
+<a href="/ui/release">Launch Readiness</a> |
+<a href="/ui/ecosystem">Ecosystem Overview</a> |
+<a href="/ui/governance">Governance Center</a> |
+<a href="/ui/integration-readiness">Integration Readiness</a> |
+<a href="/ui/upgrade">Upgrade Center</a> |
+<a href="/ui/modules">Module Catalog</a>
+</nav>
+<h2>Health Summary</h2><ul>{% for k,v in diagnostics.items() %}<li>{{k}}: {{v}}</li>{% endfor %}</ul>
+<h2>Recent Critical Events</h2><ul>{% for a in recent_audit %}<li>{{a.created_at}} {{a.action}}</li>{% endfor %}</ul>
+</body></html>

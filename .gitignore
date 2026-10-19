@@ -1,0 +1,50 @@
+# Python/tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+build/
+dist/
+*.egg-info/
+.coverage
+htmlcov/
+
+# Runtime state, memory, personal data and generated artifacts
+data/*
+!data/sample_capsules.json
+!data/.gitkeep
+logs/
+backups/
+tmp/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.log
+*.bak
+*.backup
+
+# Local configuration and credentials (never commit real examples)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.kdbx
+id_rsa
+id_ed25519
+credentials.json
+service-account.json
+
+# Editor/OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

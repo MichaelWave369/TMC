@@ -1,0 +1,9 @@
+<!doctype html><html><body>
+<h1>Capsule Detail</h1>
+{% if capsule %}
+<p><b>ID:</b> {{ capsule.id }}</p><p><b>Kind:</b> {{ capsule.kind }}</p><p><b>Status:</b> {{ capsule.status }}</p>
+<p><b>Workspace IDs:</b> {{ capsule.workspace_ids }}</p><p><b>Summary:</b> {{ capsule.summary }}</p><p>{{ capsule.text }}</p>
+<p><b>Related:</b> {{ capsule.related_capsule_ids }}</p><p><b>Provenance:</b> {{ capsule.provenance }}</p>
+<h2>Attachments</h2><ul>{% for a in attachments %}<li>{{a.filename}} ({{a.extraction_status}})</li>{% endfor %}</ul>
+{% else %}<p>Not found.</p>{% endif %}
+<a href="/ui/">back</a></body></html>

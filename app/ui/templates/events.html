@@ -1,0 +1,1 @@
+<!doctype html><html><body><h1>Event Stream</h1><ul>{% for e in events %}<li>{{e.timestamp}} {{e.event_type}} source={{e.source}} corr={{e.correlation_id}}</li>{% endfor %}</ul><a href="/ui/">back</a></body></html>
