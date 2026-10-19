@@ -30,6 +30,12 @@ Open `http://127.0.0.1:8000/ui` for the local operator interface, or `/docs` for
 - Import/export, snapshots, plugins, connectors, and rule foundations
 - Diagnostic, migration, and release-readiness utilities
 
+## Second Brain: Circle-Back (experimental)
+
+TMC can now generate a **local, read-only project re-entry queue** from linked memory records without claiming completion or treating stored text as independently verified. It exposes capsule IDs for operator review, not the raw memory text, and deliberately does not add a remote HTTP endpoint.
+
+See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m app.tools.circle_back_preview --db data/tmc.db` after local setup.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.

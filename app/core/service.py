@@ -539,6 +539,29 @@ class MemoryService:
         })
         return base
 
+    def circle_back_queue(self, limit: int = 20, stale_days: int = 30, as_of=None):
+        """Local-only, read-side Second Brain re-entry suggestions.
+
+        This does not mutate capsule state, claim verification, or trigger jobs.
+        Do not serve its output over an unauthenticated network interface.
+        """
+        from app.memory.circle_back import circle_back_snapshot
+
+        unlocked = {
+            v.vault_id for v in self.store.get_vaults()
+            if v.status == VaultStatus.unlocked
+        }
+        return circle_back_snapshot(
+            projects=self.store.get_projects(),
+            capsules=self.store.get_capsules(),
+            active_profile_id=self.active_profile_id,
+            unlocked_vault_ids=unlocked,
+            policy=self.policy,
+            as_of=as_of,
+            limit=limit,
+            stale_days=stale_days,
+        )
+
     # convenience getters
     def list_identity(self):
         return [c.model_dump(mode="json") for c in self.store.get_capsules() if c.profile_id == self.active_profile_id and c.kind == CapsuleKind.identity]
