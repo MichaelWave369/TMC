@@ -15,6 +15,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", default="data/tmc.db", help="Path to local SQLite DB")
     subs = parser.add_subparsers(dest="operation", required=True)
     subs.add_parser("list", help="Show next actions in the active profile")
+    p = subs.add_parser("review", help="Read-only integrated Circle-Back review board")
+    p.add_argument("--limit", type=int, default=20)
+    p.add_argument("--stale-days", type=int, default=30)
 
     p = subs.add_parser("propose", help="Create an unapproved proposal")
     p.add_argument("--project-id", required=True)
@@ -48,6 +51,8 @@ def main() -> None:
     svc = MemoryService(args.db)
     if args.operation == "list":
         out = svc.list_next_actions()
+    elif args.operation == "review":
+        out = svc.circle_back_review_board(limit=args.limit, stale_days=args.stale_days)
     elif args.operation == "propose":
         out = svc.propose_next_action(
             args.project_id, args.title, args.rationale, args.source

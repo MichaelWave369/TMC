@@ -37,3 +37,7 @@ The CLI report deliberately does not return raw capsule content, per-reference d
 Only the active profile's project action can be checked. The same project, profile, unlocked-vault, persistent/non-private policy and unarchived rules apply. R2 checks the currently stored capsule state, not an externally authenticated origin, and does not monitor the user's source systems or GitHub automatically.
 
 There is still no outer HTTP authentication boundary and no secure vault encryption in TMC. This feature should only be evaluated locally with non-sensitive demo data.
+
+## R3 follow-up gate
+
+R3 also rechecks original proposal-time source snapshots at **completion attestation**, not just at approval. If they no longer match, the action stays approved and requires operator review. The local [Review Board](CIRCLE_BACK_REVIEW_BOARD.md) summarizes these warnings alongside project suggestions.
