@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 
 from app.core.diagnostics import compute_metrics
@@ -653,9 +654,7 @@ class MemoryService:
         if approve:
             self._next_action_visible_refs(action.workspace_id, action.source_capsule_ids)
         action.status = NextActionStatus.approved if approve else NextActionStatus.rejected
-        action.updated_at = __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        )
+        action.updated_at = datetime.now(timezone.utc)
         event = NextActionEvent(
             action_id=action.id, profile_id=self.active_profile_id,
             transition="approved" if approve else "rejected", operator_note=note,
@@ -679,9 +678,7 @@ class MemoryService:
         refs = self._next_action_visible_refs(action.workspace_id, evidence_capsule_ids)
         action.status = NextActionStatus.operator_attested
         action.completion_evidence_ids = list(refs)
-        action.updated_at = __import__("datetime").datetime.now(
-            __import__("datetime").timezone.utc
-        )
+        action.updated_at = datetime.now(timezone.utc)
         event = NextActionEvent(
             action_id=action.id, profile_id=self.active_profile_id,
             transition="operator_attested", operator_note=note,
