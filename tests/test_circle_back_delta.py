@@ -175,6 +175,21 @@ def test_real_memory_service_board_can_be_snapshotted_without_mutation(tmp_path)
     assert act["id"] in str(a)
 
 
+@pytest.mark.parametrize("field,value,message", [
+    ("review_signal", "independently_verified", "Unsupported review signal"),
+    ("status", "verified", "Unsupported action status"),
+    ("evidence_review", "truth_certified", "Unsupported evidence review state"),
+])
+def test_untrusted_snapshots_cannot_invent_verification_states(field, value, message):
+    a, b = snapshot(), snapshot()
+    if field == "review_signal":
+        b["projects"][0][field] = value
+    else:
+        b["projects"][0]["operator_actions"][0][field] = value
+    with pytest.raises(ValueError, match=message):
+        compare_review_snapshots(a, b)
+
+
 def test_out_of_order_timestamps_rejected():
     a, b = snapshot(), snapshot()
     a["generated_at"] = "2026-10-20T12:00:00+00:00"
