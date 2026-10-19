@@ -35,6 +35,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--note", required=True)
     p.add_argument("--confirm-local-operator", action="store_true", required=True)
 
+    p = subs.add_parser("check", help="Read-only evidence drift review")
+    p.add_argument("--action-id", required=True)
+
     p = subs.add_parser("history", help="Read an action's stored local decision events")
     p.add_argument("--action-id", required=True)
     return parser
@@ -57,6 +60,8 @@ def main() -> None:
         out = svc.attest_next_action_done(
             args.action_id, args.evidence, args.note
         )
+    elif args.operation == "check":
+        out = svc.assess_next_action_evidence(args.action_id)
     else:
         out = svc.next_action_history(args.action_id)
     print(json.dumps(out, indent=2))

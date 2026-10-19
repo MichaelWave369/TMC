@@ -44,3 +44,7 @@ R1 stores no raw capsule text and creates no new HTTP route. Action titles and o
 ## Next safety work
 
 Full authenticated operator identities, durable evidence attestations, tamper-evident receipts, project lifecycle reconciliation, consent-based schedule integration and audited local encryption require separate designs/tests before remote or production use.
+
+## R2: Evidence drift
+
+See [the Evidence Drift Gate](CIRCLE_BACK_EVIDENCE_DRIFT.md) for local capsule snapshot comparisons, changed-source approval blocking, and the read-only `check` CLI command. Matches are not independent proof of truth or task completion.

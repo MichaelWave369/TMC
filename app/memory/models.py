@@ -106,6 +106,9 @@ class NextAction(BaseModel):
     rationale: str = ""
     source_capsule_ids: list[str] = Field(default_factory=list)
     completion_evidence_ids: list[str] = Field(default_factory=list)
+    # Local change indicators, not signed or independently verified receipts.
+    source_snapshots: dict[str, str] = Field(default_factory=dict)
+    completion_snapshots: dict[str, str] = Field(default_factory=dict)
     status: NextActionStatus = NextActionStatus.proposed
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

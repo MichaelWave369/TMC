@@ -566,7 +566,57 @@ class MemoryService:
             stale_days=stale_days,
         )
 
-    # Circle-Back R1: local operator decisions, with no HTTP exposure.
+    # Circle-Back: local operator decisions, with no HTTP exposure.
+    @staticmethod
+    def _next_action_public_record(action: NextAction) -> dict:
+        """Never include content-derived snapshots in operator CLI output."""
+        return action.model_dump(
+            mode="json", exclude={"source_snapshots", "completion_snapshots"}
+        )
+
+    def _next_action_snapshots(self, capsule_ids: list[str]) -> dict[str, str]:
+        from app.memory.evidence_drift import snapshot_capsule
+        return {
+            cid: snapshot_capsule(self.store.get_capsule(cid))
+            for cid in capsule_ids
+        }
+
+    def assess_next_action_evidence(self, action_id: str) -> dict:
+        """Read-only state reconciliation, never a truth or completion claim."""
+        from app.memory.evidence_drift import snapshot_status
+
+        action = self._next_action_owned(action_id)
+        results = {}
+        for kind, ids, stored in (
+            ("source", action.source_capsule_ids, action.source_snapshots),
+            ("completion", action.completion_evidence_ids, action.completion_snapshots),
+        ):
+            visible = [
+                cid for cid in ids
+                if self._next_action_refs_currently_visible(action.workspace_id, cid)
+            ]
+            current = self._next_action_snapshots(visible)
+            results[kind] = snapshot_status(ids, stored, current)
+
+        review = any(
+            v in {"attention_required", "snapshot_unavailable"}
+            for v in results.values()
+        )
+        matched = "unchanged_since_snapshot" in results.values()
+        return {
+            "action_id": action.id,
+            "project_id": action.project_id,
+            "profile_id": self.active_profile_id,
+            "source_snapshot_status": results["source"],
+            "completion_snapshot_status": results["completion"],
+            "evidence_review": "operator_recheck_required" if review else (
+                "consistent_with_local_snapshot" if matched
+                else "no_evidence_snapshot"
+            ),
+            "independent_verification": False,
+            "automatic_actions": False,
+        }
+
     def _next_action_project(self, project_id: str) -> ProjectRecord:
         project = next((
             p for p in self.store.get_projects()
@@ -635,13 +685,14 @@ class MemoryService:
             profile_id=self.active_profile_id, project_id=project.id,
             workspace_id=project.workspace_id, title=title, rationale=rationale,
             source_capsule_ids=list(refs),
+            source_snapshots=self._next_action_snapshots(refs),
         )
         event = NextActionEvent(
             action_id=action.id, profile_id=self.active_profile_id,
             transition="proposed", evidence_capsule_ids=list(refs),
         )
         self.store.save_next_action_transition(action, event, expected_status=None)
-        return action.model_dump(mode="json")
+        return self._next_action_public_record(action)
 
     def decide_next_action(self, action_id: str, approve: bool, note: str = "") -> dict:
         """Explicit local operator decision; no automatic job starts."""
@@ -653,6 +704,11 @@ class MemoryService:
         note = self._next_action_text(note, "Note", 500, required=False)
         if approve:
             self._next_action_visible_refs(action.workspace_id, action.source_capsule_ids)
+            if action.source_capsule_ids:
+                if not action.source_snapshots:
+                    raise ValueError("Source snapshot unavailable; create a fresh proposal")
+                if self._next_action_snapshots(action.source_capsule_ids) != action.source_snapshots:
+                    raise ValueError("Source evidence changed; review and create a new proposal")
         action.status = NextActionStatus.approved if approve else NextActionStatus.rejected
         action.updated_at = datetime.now(timezone.utc)
         event = NextActionEvent(
@@ -663,7 +719,7 @@ class MemoryService:
         self.store.save_next_action_transition(
             action, event, expected_status=NextActionStatus.proposed.value
         )
-        return action.model_dump(mode="json")
+        return self._next_action_public_record(action)
 
     def attest_next_action_done(
         self, action_id: str, evidence_capsule_ids: list[str], note: str,
@@ -678,6 +734,7 @@ class MemoryService:
         refs = self._next_action_visible_refs(action.workspace_id, evidence_capsule_ids)
         action.status = NextActionStatus.operator_attested
         action.completion_evidence_ids = list(refs)
+        action.completion_snapshots = self._next_action_snapshots(refs)
         action.updated_at = datetime.now(timezone.utc)
         event = NextActionEvent(
             action_id=action.id, profile_id=self.active_profile_id,
@@ -687,7 +744,7 @@ class MemoryService:
         self.store.save_next_action_transition(
             action, event, expected_status=NextActionStatus.approved.value
         )
-        return action.model_dump(mode="json")
+        return self._next_action_public_record(action)
 
     def list_next_actions(self) -> list[dict]:
         """Only the active profile; references hidden by policy are omitted."""
@@ -702,7 +759,7 @@ class MemoryService:
             ), None)
             if project is None:
                 continue
-            row = action.model_dump(mode="json")
+            row = self._next_action_public_record(action)
             for key in ("source_capsule_ids", "completion_evidence_ids"):
                 row[key] = [
                     cid for cid in row[key]
