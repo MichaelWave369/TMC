@@ -16,6 +16,8 @@ from app.memory.models import (
     DeviceIdentity,
     Profile,
     ProjectRecord,
+    NextAction,
+    NextActionEvent,
     Snapshot,
     SyncSession,
     Vault,
@@ -40,6 +42,8 @@ class SQLiteStore:
                 CREATE TABLE IF NOT EXISTS kv (k TEXT PRIMARY KEY, v TEXT);
                 CREATE TABLE IF NOT EXISTS capsules (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, payload TEXT);
+                CREATE TABLE IF NOT EXISTS next_actions (id TEXT PRIMARY KEY, payload TEXT);
+                CREATE TABLE IF NOT EXISTS next_action_events (id TEXT PRIMARY KEY, action_id TEXT, payload TEXT);
                 CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS conflicts (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS vaults (id TEXT PRIMARY KEY, payload TEXT);
@@ -80,6 +84,53 @@ class SQLiteStore:
 
     def upsert_project(self, x: ProjectRecord): self._upsert("projects", x.id, x.model_dump(mode="json"))
     def get_projects(self): return [ProjectRecord.model_validate(x) for x in self._all("projects")]
+
+    def get_next_actions(self) -> list[NextAction]:
+        return [NextAction.model_validate(x) for x in self._all("next_actions")]
+
+    def get_next_action(self, action_id: str) -> NextAction | None:
+        record = self._get("next_actions", action_id)
+        return NextAction.model_validate(record) if record else None
+
+    def get_next_action_events(self, action_id: str) -> list[NextActionEvent]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT payload FROM next_action_events WHERE action_id=? ORDER BY rowid",
+                (action_id,),
+            ).fetchall()
+        return [NextActionEvent.model_validate(json.loads(r[0])) for r in rows]
+
+    def save_next_action_transition(
+        self, action: NextAction, event: NextActionEvent, *,
+        expected_status: str | None,
+    ) -> None:
+        """Atomically update action and append a separate event row.
+
+        Local SQLite rows are not tamper-proof or digitally signed. The
+        expected-status guard prevents accidental competing transitions.
+        """
+        if action.id != event.action_id or action.profile_id != event.profile_id:
+            raise ValueError("Mismatched action transition")
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing = conn.execute(
+                "SELECT payload FROM next_actions WHERE id=?", (action.id,)
+            ).fetchone()
+            if expected_status is None:
+                if existing is not None:
+                    raise ValueError("Next action already exists")
+            elif existing is None or (
+                json.loads(existing[0]).get("status") != expected_status
+            ):
+                raise ValueError("Stale or missing action state")
+            conn.execute(
+                "INSERT OR REPLACE INTO next_actions(id, payload) VALUES (?,?)",
+                (action.id, json.dumps(action.model_dump(mode="json"))),
+            )
+            conn.execute(
+                "INSERT INTO next_action_events(id, action_id, payload) VALUES (?,?,?)",
+                (event.id, event.action_id, json.dumps(event.model_dump(mode="json"))),
+            )
 
     def upsert_attachment(self, x: Attachment): self._upsert("attachments", x.id, x.model_dump(mode="json"))
     def get_attachments(self): return [Attachment.model_validate(x) for x in self._all("attachments")]

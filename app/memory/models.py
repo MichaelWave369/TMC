@@ -90,6 +90,37 @@ class ProjectRecord(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class NextActionStatus(str, Enum):
+    proposed = "proposed"
+    approved = "approved"
+    rejected = "rejected"
+    operator_attested = "operator_attested"
+
+
+class NextAction(BaseModel):
+    id: str = Field(default_factory=lambda: f"next-{uuid4()}")
+    profile_id: str
+    project_id: str
+    workspace_id: str
+    title: str
+    rationale: str = ""
+    source_capsule_ids: list[str] = Field(default_factory=list)
+    completion_evidence_ids: list[str] = Field(default_factory=list)
+    status: NextActionStatus = NextActionStatus.proposed
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class NextActionEvent(BaseModel):
+    id: str = Field(default_factory=lambda: f"next-event-{uuid4()}")
+    action_id: str
+    profile_id: str
+    transition: str
+    operator_note: str = ""
+    evidence_capsule_ids: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Attachment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     capsule_ids: list[str] = Field(default_factory=list)
