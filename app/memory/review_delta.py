@@ -12,6 +12,17 @@ from typing import Any
 FORMAT = "tmc.circle_back.snapshot.v1"
 MAX_PROJECTS = 100
 MAX_ACTIONS = 8
+ALLOWED_REVIEW_SIGNALS = {
+    "evidence_recheck_required", "operator_decision_needed",
+    "approved_followup_needed", "memory_review_needed",
+    "attach_source_review", "stale_context_review",
+    "operator_attested_not_verified", "general_project_review",
+}
+ALLOWED_ACTION_STATUSES = {"proposed", "approved", "rejected", "operator_attested"}
+ALLOWED_EVIDENCE_REVIEWS = {
+    "operator_recheck_required", "consistent_with_local_snapshot",
+    "no_evidence_snapshot",
+}
 ACTION_FIELDS = ("action_id", "status", "evidence_review")
 PROJECT_FIELDS = (
     "project_id", "workspace_id", "project_name", "review_signal",
@@ -71,6 +82,8 @@ def _check_snapshot(snapshot: dict) -> None:
             raise ValueError("Malformed snapshot project")
         for field in ("project_id", "workspace_id", "project_name", "review_signal"):
             _name(project.get(field), field)
+        if project["review_signal"] not in ALLOWED_REVIEW_SIGNALS:
+            raise ValueError("Unsupported review signal")
         pid = project["project_id"]
         if pid in seen:
             raise ValueError("Duplicate project ID in snapshot")
@@ -92,6 +105,10 @@ def _check_snapshot(snapshot: dict) -> None:
                 raise ValueError("Malformed action")
             for field in ACTION_FIELDS:
                 _name(action.get(field), field)
+            if action["status"] not in ALLOWED_ACTION_STATUSES:
+                raise ValueError("Unsupported action status")
+            if action["evidence_review"] not in ALLOWED_EVIDENCE_REVIEWS:
+                raise ValueError("Unsupported evidence review state")
             if action["action_id"] in aids:
                 raise ValueError("Duplicate action ID in project")
             aids.add(action["action_id"])
