@@ -19,6 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", default="data/tmc.db", help="Local SQLite database")
     parser.add_argument("--limit", type=int, default=20, help="1..100 displayed project cards")
     parser.add_argument("--stale-days", type=int, default=30, help="1..3650")
+    parser.add_argument("--without-focus", action="store_true", help="Exclude Focus Session summaries")
     parser.add_argument(
         "--output", type=Path, default=None,
         help="Explicit HTML destination. Existing files will NEVER be replaced.",
@@ -62,7 +63,8 @@ def main() -> None:
     board = service.circle_back_review_board(
         limit=args.limit, stale_days=args.stale_days,
     )
-    rendered = render_review_board_html(board)
+    focus = None if args.without_focus else service.circle_back_focus_overlay(board)
+    rendered = render_review_board_html(board, focus_overlay=focus)
     report_path = save_new_local_report(rendered, args.output)
     print(f"Local-only offline review generated at: {report_path}")
     print("Contains local project metadata. Do not upload, publish, or commit this HTML file.")
