@@ -43,7 +43,7 @@ def _label(value: object) -> str:
     return _escape(str(value).replace("_", " ").capitalize())
 
 
-def render_review_board_html(board: dict) -> str:
+def render_review_board_html(board: dict, focus_overlay: dict | None = None) -> str:
     """Render only known, sanitized board fields as fully offline static HTML.
 
     This rejects unexpected input modes, as well as any suggestion that an
@@ -56,6 +56,13 @@ def render_review_board_html(board: dict) -> str:
     cards = board.get("cards")
     if not isinstance(cards, list) or len(cards) > 100:
         raise ValueError("Board cards must be a bounded list")
+
+    # A separate, opt-in policy-scoped summary prevents R5/R6 snapshot
+    # schemas from inheriting focus notes, intent, or other sensitive fields.
+    focus_lookup = {}
+    if focus_overlay is not None:
+        from app.memory.focus_board import checked_focus_overlay
+        focus_lookup = checked_focus_overlay(board, focus_overlay)
 
     count = len(cards)
     summary = (
@@ -100,6 +107,32 @@ def render_review_board_html(board: dict) -> str:
         )
         if card.get("operator_actions_truncated") is True:
             action_list += '<p class="small">Additional operator actions omitted by the 8-action preview limit.</p>'
+        focus_section = ""
+        if focus_overlay is not None:
+            focus = focus_lookup[(card.get("project_id"), card.get("workspace_id"))]
+            lines = []
+            for session in focus["recent_sessions"]:
+                decision = session["decision"]
+                item = (
+                    '<li class="action"><strong>' + _label(session["status"]) + '</strong>'
+                    + ' <span class="small">Focus ' + _escape(session["session_id"]) + '</span>'
+                    + '<div class="small">Started: ' + _escape(session["started_at"]) + '</div>'
+                )
+                if decision is not None:
+                    item += '<div class="small">Human review decision: ' + _label(decision) + '</div>'
+                item += '</li>'
+                lines.append(item)
+            focus_section = (
+                '<section aria-label="Local focus sessions"><h3>Focus sessions</h3>'
+                '<p class="small">Local human review history only. No task completion is verified.</p>'
+                '<div class="meta"><span class="pill">Recorded focus sessions: '
+                + _escape(focus["total_sessions"]) + '</span></div>'
+                + ('<ul>' + "".join(lines) + '</ul>' if lines
+                   else '<p class="small">No local focus sessions recorded for this project.</p>')
+                + ('<p class="small">Older focus sessions omitted by the three-session preview limit.</p>'
+                   if focus["sessions_truncated"] else "")
+                + '</section>'
+            )
         blocks.append(
             '<article class="card">'
             f'<span class="signal">Review {index} · {_label(card.get("review_signal", "general_project_review"))}</span>'
@@ -113,7 +146,7 @@ def render_review_board_html(board: dict) -> str:
             f'<span class="pill">Visible context age: {_escape(card.get("days_since_visible_activity", 0))} days</span>'
             '</div>'
             '<p class="small">Attestations are operator assertions, not independently verified completion.</p>'
-            + action_list + '</article>'
+            + action_list + focus_section + '</article>'
         )
     if not blocks:
         blocks.append('<div class="card"><h2>No project cards available</h2><p class="small">Nothing was selected for this local review.</p></div>')
@@ -128,7 +161,7 @@ def render_review_board_html(board: dict) -> str:
         'style-src \'unsafe-inline\'">'
         '<title>TMC · Circle-Back Offline Review</title>'
         f'<style>{_CSS}</style></head><body><main class="wrap">'
-        '<header><div class="eyebrow">Total Memory Core · Circle-Back R4</div>'
+        '<header><div class="eyebrow">Total Memory Core · Circle-Back R8</div>'
         '<h1>Local project review board</h1>'
         '<p class="lead">One-time, static operator review generated from local memory. '
         'This page cannot fetch new data, approve actions, or verify task completion.</p></header>'

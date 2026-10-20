@@ -945,6 +945,18 @@ class MemoryService:
             if event.profile_id == self.active_profile_id
         ]
 
+    def circle_back_focus_overlay(self, board: dict) -> dict:
+        """Read-only Focus Session summaries for the *displayed* review cards.
+
+        Separate from R3/R5/R6 board data: notes and intent are never exported.
+        """
+        from app.memory.focus_board import build_focus_overlay
+        return build_focus_overlay(
+            board=board,
+            sessions=self.store.get_focus_sessions(),
+            profile_id=self.active_profile_id,
+        )
+
     # convenience getters
     def list_identity(self):
         return [c.model_dump(mode="json") for c in self.store.get_capsules() if c.profile_id == self.active_profile_id and c.kind == CapsuleKind.identity]
