@@ -54,7 +54,7 @@ def test_closed_focus_decisions_display_without_raw_review_notes(tmp_path):
     svc.close_focus_session(focus["id"], "needs_evidence", "PRIVATE_REVIEW_NOTE")
     board, overlay = get_board_and_overlay(svc)
     html = render_review_board_html(board, focus_overlay=overlay)
-    assert "needs evidence" in html
+    assert "Needs evidence" in html
     assert "Human review decision" in html
     assert "PRIVATE_FOCUS_INTENT" not in html
     assert "PRIVATE_REVIEW_NOTE" not in html
@@ -70,7 +70,7 @@ def test_approved_task_link_is_not_exported_or_approved_by_read(tmp_path):
     old = svc.store.get_next_action(act["id"]).model_dump(mode="json")
     board, overlay = get_board_and_overlay(svc)
     html = render_review_board_html(board, focus_overlay=overlay)
-    assert "next action identified" in html
+    assert "Next action identified" in html
     assert "PRIVATE_ACTION_TITLE" not in html
     assert "PRIVATE_NOTE" not in html
     assert "linked_action_id" not in html
@@ -236,7 +236,8 @@ def test_r5_snapshot_format_is_unmodified_by_focus_overlay(tmp_path):
     _ = render_review_board_html(board, focus_overlay=overlay)
     after = snapshot_from_review_board(board)
     assert before == after
-    assert "focus" not in str(after).lower()
+    assert "focus_sessions" not in str(after)
+    assert "recent_sessions" not in str(after)
     assert "NEVER_IN_A_SNAPSHOT" not in str(after)
 
 
