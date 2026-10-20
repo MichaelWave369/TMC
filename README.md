@@ -44,6 +44,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R5:** Save and compare two [private local review snapshots](docs/CIRCLE_BACK_SNAPSHOT_DELTA.md) with `python -m app.tools.circle_back_delta snapshot` and `python -m app.tools.circle_back_delta compare --before OLD.json --after NEW.json`. Changed records are review clues, never independent verification.
 
+**Circle-Back R6:** Render a [private offline visual change timeline](docs/CIRCLE_BACK_TIMELINE.md) from 2–12 saved local snapshots with `python -m app.tools.circle_back_timeline --snapshot OLDEST.json --snapshot NEWEST.json`. No public server, scripts, or proof-of-completion claims.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.
