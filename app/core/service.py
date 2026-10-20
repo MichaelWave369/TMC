@@ -25,6 +25,10 @@ from app.memory.models import (
     NextAction,
     NextActionEvent,
     NextActionStatus,
+    FocusSession,
+    FocusSessionEvent,
+    FocusSessionStatus,
+    FocusReviewDecision,
     PolicyMode,
     Profile,
     ProjectRecord,
@@ -835,6 +839,111 @@ class MemoryService:
         return build_review_board(
             preview=preview, actions_by_project=action_rows, limit=limit,
         )
+
+    # Circle-Back R7: operator-led, local-only focused review sessions.
+    def _focus_owned(self, session_id: str) -> FocusSession:
+        session = self.store.get_focus_session(session_id)
+        if session is None or session.profile_id != self.active_profile_id:
+            raise ValueError("Focus session not available in active profile")
+        project = self._next_action_project(session.project_id)
+        if project.workspace_id != session.workspace_id:
+            raise ValueError("Focus session project scope mismatch")
+        return session
+
+    def start_focus_session(self, project_id: str, intent: str) -> dict:
+        """Open one explicitly requested local project review session."""
+        project = self._next_action_project(project_id)
+        intent = self._next_action_text(intent, "Focus intent", 200, required=True)
+        session = FocusSession(
+            profile_id=self.active_profile_id, project_id=project.id,
+            workspace_id=project.workspace_id, intent=intent,
+        )
+        event = FocusSessionEvent(
+            session_id=session.id, profile_id=self.active_profile_id,
+            transition="started",
+        )
+        self.store.save_focus_transition(session, event, expected_status=None)
+        result = session.model_dump(mode="json")
+        result["completion_verified"] = False
+        result["automatic_actions"] = False
+        return result
+
+    def close_focus_session(
+        self, session_id: str, decision: str, note: str,
+        linked_action_id: str = "",
+    ) -> dict:
+        """Record a human review decision; never change the linked action."""
+        session = self._focus_owned(session_id)
+        if session.status != FocusSessionStatus.active:
+            raise ValueError("Only active focus sessions can be closed")
+        try:
+            selected = FocusReviewDecision(decision)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("Unsupported review decision") from exc
+        note = self._next_action_text(note, "Review note", 500, required=True)
+        if selected == FocusReviewDecision.next_action_identified:
+            if not isinstance(linked_action_id, str) or not linked_action_id.strip():
+                raise ValueError("An existing next-action ID is required for this decision")
+            action = self._next_action_owned(linked_action_id.strip())
+            if (action.project_id != session.project_id
+                    or action.workspace_id != session.workspace_id):
+                raise ValueError("Linked next action is outside the focus project")
+            if action.status in {NextActionStatus.rejected, NextActionStatus.operator_attested}:
+                raise ValueError("Linked next action is not available for future review")
+            linked_action_id = action.id
+        elif linked_action_id:
+            raise ValueError("An action ID is only allowed for next_action_identified")
+        session.status = FocusSessionStatus.closed
+        session.decision = selected
+        session.operator_note = note
+        session.linked_action_id = linked_action_id
+        session.closed_at = datetime.now(timezone.utc)
+        event = FocusSessionEvent(
+            session_id=session.id, profile_id=self.active_profile_id,
+            transition="closed", decision=selected.value,
+            operator_note=note, linked_action_id=linked_action_id,
+        )
+        self.store.save_focus_transition(
+            session, event, expected_status=FocusSessionStatus.active.value
+        )
+        result = session.model_dump(mode="json")
+        result["completion_verified"] = False
+        result["automatic_actions"] = False
+        return result
+
+    def list_focus_sessions(self, limit: int = 50) -> dict:
+        """Read only active-profile sessions with bounded local output."""
+        if type(limit) is not int or not 1 <= limit <= 100:
+            raise ValueError("limit must be an integer between 1 and 100")
+        projects = {
+            (p.id, p.workspace_id)
+            for p in self.store.get_projects()
+            if p.profile_id == self.active_profile_id
+        }
+        rows = [
+            session for session in self.store.get_focus_sessions()
+            if session.profile_id == self.active_profile_id
+            and (session.project_id, session.workspace_id) in projects
+        ]
+        rows.sort(key=lambda s: (s.started_at, s.id), reverse=True)
+        return {
+            "profile_id": self.active_profile_id,
+            "mode": "local_operator_focus_sessions",
+            "completion_verified": False,
+            "automatic_actions": False,
+            "total_sessions": len(rows),
+            "truncated": len(rows) > limit,
+            "sessions": [s.model_dump(mode="json") for s in rows[:limit]],
+        }
+
+    def focus_session_history(self, session_id: str) -> list[dict]:
+        """Local operator history; events are not signed or tamper-proof."""
+        session = self._focus_owned(session_id)
+        return [
+            event.model_dump(mode="json")
+            for event in self.store.get_focus_session_events(session.id)
+            if event.profile_id == self.active_profile_id
+        ]
 
     # convenience getters
     def list_identity(self):
