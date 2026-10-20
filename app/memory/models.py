@@ -124,6 +124,42 @@ class NextActionEvent(BaseModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
+class FocusSessionStatus(str, Enum):
+    active = "active"
+    closed = "closed"
+
+
+class FocusReviewDecision(str, Enum):
+    revisit_later = "revisit_later"
+    needs_evidence = "needs_evidence"
+    next_action_identified = "next_action_identified"
+
+
+class FocusSession(BaseModel):
+    id: str = Field(default_factory=lambda: f"focus-{uuid4()}")
+    profile_id: str
+    project_id: str
+    workspace_id: str
+    intent: str
+    status: FocusSessionStatus = FocusSessionStatus.active
+    decision: FocusReviewDecision | None = None
+    operator_note: str = ""
+    linked_action_id: str = ""
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    closed_at: datetime | None = None
+
+
+class FocusSessionEvent(BaseModel):
+    id: str = Field(default_factory=lambda: f"focus-event-{uuid4()}")
+    session_id: str
+    profile_id: str
+    transition: str
+    decision: str = ""
+    operator_note: str = ""
+    linked_action_id: str = ""
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
 class Attachment(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     capsule_ids: list[str] = Field(default_factory=list)

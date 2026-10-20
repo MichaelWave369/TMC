@@ -18,6 +18,8 @@ from app.memory.models import (
     ProjectRecord,
     NextAction,
     NextActionEvent,
+    FocusSession,
+    FocusSessionEvent,
     Snapshot,
     SyncSession,
     Vault,
@@ -44,6 +46,8 @@ class SQLiteStore:
                 CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS next_actions (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS next_action_events (id TEXT PRIMARY KEY, action_id TEXT, payload TEXT);
+                CREATE TABLE IF NOT EXISTS focus_sessions (id TEXT PRIMARY KEY, payload TEXT);
+                CREATE TABLE IF NOT EXISTS focus_session_events (id TEXT PRIMARY KEY, session_id TEXT, payload TEXT);
                 CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS conflicts (id TEXT PRIMARY KEY, payload TEXT);
                 CREATE TABLE IF NOT EXISTS vaults (id TEXT PRIMARY KEY, payload TEXT);
@@ -130,6 +134,61 @@ class SQLiteStore:
             conn.execute(
                 "INSERT INTO next_action_events(id, action_id, payload) VALUES (?,?,?)",
                 (event.id, event.action_id, json.dumps(event.model_dump(mode="json"))),
+            )
+
+    def get_focus_sessions(self) -> list[FocusSession]:
+        return [FocusSession.model_validate(x) for x in self._all("focus_sessions")]
+
+    def get_focus_session(self, session_id: str) -> FocusSession | None:
+        record = self._get("focus_sessions", session_id)
+        return FocusSession.model_validate(record) if record else None
+
+    def get_focus_session_events(self, session_id: str) -> list[FocusSessionEvent]:
+        with self._connect() as conn:
+            rows = conn.execute(
+                "SELECT payload FROM focus_session_events WHERE session_id=? ORDER BY rowid",
+                (session_id,),
+            ).fetchall()
+        return [FocusSessionEvent.model_validate(json.loads(r[0])) for r in rows]
+
+    def save_focus_transition(
+        self, session: FocusSession, event: FocusSessionEvent, *,
+        expected_status: str | None,
+    ) -> None:
+        """Atomically save local operator session and transition event.
+
+        One active focus session per profile is enforced inside the SQLite
+        write transaction, including when two operator windows race.
+        Records are not signed, immutable, encrypted, or independently verified.
+        """
+        if session.id != event.session_id or session.profile_id != event.profile_id:
+            raise ValueError("Mismatched focus transition")
+        with self._connect() as conn:
+            conn.execute("BEGIN IMMEDIATE")
+            old = conn.execute(
+                "SELECT payload FROM focus_sessions WHERE id=?", (session.id,)
+            ).fetchone()
+            if expected_status is None:
+                if old is not None or session.status.value != "active" or event.transition != "started":
+                    raise ValueError("Invalid focus session creation")
+                records = conn.execute("SELECT payload FROM focus_sessions").fetchall()
+                if any(
+                    (r.get("profile_id") == session.profile_id and r.get("status") == "active")
+                    for r in (json.loads(row[0]) for row in records)
+                ):
+                    raise ValueError("A focus session is already active for this profile")
+            else:
+                if (old is None or json.loads(old[0]).get("status") != expected_status
+                        or expected_status != "active"
+                        or session.status.value != "closed" or event.transition != "closed"):
+                    raise ValueError("Stale or invalid focus session transition")
+            conn.execute(
+                "INSERT OR REPLACE INTO focus_sessions(id, payload) VALUES (?, ?)",
+                (session.id, json.dumps(session.model_dump(mode="json"))),
+            )
+            conn.execute(
+                "INSERT INTO focus_session_events(id, session_id, payload) VALUES (?, ?, ?)",
+                (event.id, event.session_id, json.dumps(event.model_dump(mode="json"))),
             )
 
     def upsert_attachment(self, x: Attachment): self._upsert("attachments", x.id, x.model_dump(mode="json"))

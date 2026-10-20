@@ -46,6 +46,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R6:** Render a [private offline visual change timeline](docs/CIRCLE_BACK_TIMELINE.md) from 2–12 saved local snapshots with `python -m app.tools.circle_back_timeline --snapshot OLDEST.json --snapshot NEWEST.json`. No public server, scripts, or proof-of-completion claims.
 
+**Circle-Back R7:** [Local Focus Sessions](docs/CIRCLE_BACK_FOCUS_SESSIONS.md) let an operator choose one project, record an intentional review and preserve a decision with `python -m app.tools.circle_back_focus --db data/tmc.db`. Sessions do not execute work or mark actions completed.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.
