@@ -48,6 +48,8 @@ See [the Circle-Back guide](docs/SECOND_BRAIN_CIRCLE_BACK.md) and run `python -m
 
 **Circle-Back R7:** [Local Focus Sessions](docs/CIRCLE_BACK_FOCUS_SESSIONS.md) let an operator choose one project, record an intentional review and preserve a decision with `python -m app.tools.circle_back_focus --db data/tmc.db`. Sessions do not execute work or mark actions completed.
 
+**Circle-Back R8:** The [offline Focus Session overlay](docs/CIRCLE_BACK_FOCUS_BOARD.md) shows current and recent local human reviews beside each displayed project's priority, without exporting intent or operator notes. Run `python -m app.tools.circle_back_html --db data/tmc.db` or pass `--without-focus` for the original view.
+
 ## Project status
 
 This is a **source-publication candidate**, not a security-certified or production-ready memory service. See [SECURITY.md](SECURITY.md), [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), and [docs/RELEASE_READINESS.md](docs/RELEASE_READINESS.md) for current limitations and verification gates.

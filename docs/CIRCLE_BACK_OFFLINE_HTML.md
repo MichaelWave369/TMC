@@ -40,3 +40,7 @@ The HTML intentionally **does not include** capsule bodies, raw evidence IDs, ac
 R4 does not introduce an API endpoint or work around TMC's missing outer HTTP authentication and insecure legacy vault XOR. Never expose the existing service beyond trusted loopback. Matching local evidence digests does not establish factual truth or completion.
 
 TMC service startup may initialize defaults or seed **synthetic** local memory records; the review/rendering calls themselves are read-only.
+
+## R8: Optional focus summaries
+
+The HTML generator now includes [profile-scoped Focus Session summaries](CIRCLE_BACK_FOCUS_BOARD.md) by default, still fully offline. Pass `--without-focus` for the original R4 board. R8 does not add notes, intent or focus metadata to R5/R6 snapshot files.
