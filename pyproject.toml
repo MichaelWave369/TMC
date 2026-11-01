@@ -21,6 +21,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.2"]
+polyglot = ["cryptography>=43,<47"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
