@@ -1,0 +1,20 @@
+name: TMC Memory Polyglot R3 Offline Courier
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-courier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install opt-in courier crypto and tests
+        run: python -m pip install -e '.[dev,polyglot]'
+      - name: Run R0/R1/R2/R3 memory regression tests
+        run: python -m pytest -q tests/test_memory_polyglot_r0.py tests/test_memory_polyglot_gateway_r1.py tests/test_memory_polyglot_consumer_r2.py tests/test_memory_polyglot_courier_r3.py
